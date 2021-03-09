@@ -8,8 +8,8 @@
     "scripts": {
         "prepare": "npm-run-all prepare:*",
         "prepare:clean": "rimraf dist",
-        "prepare:es": "tsc --outDir dist/es --module esnext --declaration false",
-        "prepare:js": "tsc",
+        "prepare:es": "tsc -p tsconfig.prod.json --outDir dist/es --module esnext --declaration false",
+        "prepare:js": "tsc -p tsconfig.prod.json",
         "js:watch": "tsc -watch",
         "coverage": "jest --coverage",
         "test": "jest",

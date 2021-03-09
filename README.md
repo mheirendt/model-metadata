@@ -86,3 +86,34 @@ const errors = user.errors();
  */
 
 ```
+
+### Conditional Validation
+
+There may be times when validation on an input should be performed when a condition applies. This can be accomplished using ModelBuilder.
+
+```TypeScript
+import { ModelBuilder } from '@mheirendt/model-metadata';
+
+// Create a new builder
+const builder = new ModelBuilder();
+
+// Define a required property 'name'
+const name = builder.string('name').required();
+const birthday = builder.date('birthday').required();
+
+// Require additional info when user is under 21
+const min = new Date();
+min.setFullYear(min.getFullYear() - 21);
+birthday.when('greater-than', min, (builder: ModelBuilder) => {
+    builder.string('guardian').required();
+});
+
+const { error } = builder.validate({ name: 'Michael', birthday: new Date('01/01/2020') });
+/**
+ * yields => {
+ *   guardian: ['Field is required']
+ * }
+ * 
+ */
+
+```
