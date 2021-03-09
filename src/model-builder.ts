@@ -54,14 +54,12 @@ export abstract class PropertyBuilder {
     abstract type: Function;
 
     constructor(public property: string | symbol) {
-    }
-
-    private applyType() {
         const key = 'design:type';
         this.metadata.set(key, (model: Model, property: string | symbol) => {
             Reflect.defineMetadata(key, this.type, model, property);
         });
     }
+
 
     apply(model: Model): void {
         const prop = this.property as string;
@@ -83,7 +81,6 @@ export abstract class PropertyBuilder {
     }
 
     protected addMetadata<T extends PropertyBuilder>(key: (string | symbol), decorator: Decorator<Model>): T {
-        this.applyType();
         this.metadata.set(key, decorator);
         return <PropertyBuilder>this as T;
     }

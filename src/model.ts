@@ -214,7 +214,7 @@ export class Model implements IModel {
 
         // Cannot validate a model here, call .errors() on the value itself
         if (value instanceof Model) {
-            return false
+            return false;
         }
         // Assess all validators applied to the property through decorators, configuration, or rules
         else {
