@@ -35,9 +35,9 @@ describe('models:model', () => {
     });
 
     describe('errors', () => {
-        it('should return false when valid', async () => {
+        it('should return false when valid', () => {
             const foo = new Foo({ foo: 'foo' });
-            expect(await foo.errors()).toBeFalsy();
+            expect(foo.errors()).toBeFalsy();
         });
 
         it('should return an array of errors for property if invalid', () => {
@@ -50,11 +50,11 @@ describe('models:model', () => {
             expect(bar.errors()).toBeTruthy();
         });
 
-        it('should not evaluate other validators if required and operator resolves to false', async () => {
+        it('should not evaluate other validators if required and operator resolves to false', () => {
             const foo = new Foo({ foo: '' });
             const validation = new Validation({ path: '/foo', validator: { name: 'length', args: 3, message: 'foo is 3 chars' } });
-            await validation.execute(foo);
-            expect((await foo.errors() as Record<string, Array<unknown>>).foo).toHaveLength(1);
+            validation.execute(foo);
+            expect((foo.errors() as Record<string, Array<unknown>>).foo).toHaveLength(1);
         });
     });
 

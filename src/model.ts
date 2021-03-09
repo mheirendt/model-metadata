@@ -185,7 +185,7 @@ export class Model implements IModel {
      * Run validation against the model instance
      * @returns False if valid or a key value pair with each invalid property
      */
-    async errors(): Promise<Record<string, unknown> | false> {
+    errors(): Record<string, unknown> | false {
 
         const errors: Record<string, unknown> = {};
 
@@ -194,71 +194,82 @@ export class Model implements IModel {
 
             // Recursively iterate through sub-models to get the full picture of validity
             if (value instanceof Model) {
-                const invalid = await value.errors();
+                const invalid = value.errors();
                 if (invalid) {
                     errors[property] = invalid;
                 }
             }
             // Assess all validators applied to the property through decorators, configuration, or rules
             else {
-
-                // value should be validated, get metadata for the property
-                const propertyMetadata = this.reflectMetadata(property);
-
-                // Ensure the property is an instance of its correct type
-                const expectedType = propertyMetadata.find(metadata => metadata.key === 'design:type');
-                const propType = this.constructorForValue(value);
-                if (expectedType && propType !== expectedType.args) {
-                    errors[property] = [`Type mismatch. Expected '${(<any>expectedType.args).name}', but got '${propType.name}'`];
-
-                } else {
-                    // Loop through the metadata keys & perform validation
-                    propertyMetadata.forEach(metadata => {
-
-                        // If there are args and it has a property named 'operator' we can be confident that it is a validator
-                        if (metadata.args instanceof Object && 'operator' in metadata.args) {
-
-                            const propertyValidator: IPropertyValidator = metadata.args;
-
-                            // If it is the truthiness operator (indicating required value), check to see if there was a default value assigned
-                            if (propertyValidator.operator instanceof IsTruthy) {
-
-                                // Check the metadata to see if we assigned a default value
-                                const defaultAssigned = propertyMetadata.find(m => m.key === 'default:assigned');
-
-                                // If a default value was assigned, fail, otherwise still evaluate for truthiness
-                                const result = propertyValidator.operator.execute(undefined, value);
-                                if (defaultAssigned || !result) {
-                                    if (!errors[property]) errors[property] = [];
-                                    (<string[]>errors[property]).push(propertyValidator.message);
-                                }
-                            }
-                            else { // Ignore validators other than required if there is not a truthy value
-
-                                // Retrieve the operator
-                                const required = OperatorMap.get('required');
-
-                                // Evaluate truthiness
-                                const isTruthy = required?.execute(undefined, value);
-
-                                // Returning here will signal the next metadata key to be processed in the foreach
-                                if (!isTruthy) return;
-
-                                // Evaluate the operator against the decorated condition (left) and the current value (right)
-                                const result = propertyValidator.operator.execute(propertyValidator.left, value);
-
-                                // A falsy result means that the condition was not met, log the stuff
-                                if (!result) {
-                                    if (!errors[property]) errors[property] = [];
-                                    (<string[]>errors[property]).push(propertyValidator.message);
-                                }
-                            }
-                        }
-                    });
-                }
+                const propertyErrors = this.validateProperty(property);
+                if (propertyErrors) errors[property] = propertyErrors;
             }
         }
         return Object.keys(errors).length ? errors : false;
+    }
+
+    validateProperty(property: string): string[] | false {
+        let errors: string[] = [];
+        const value = this[property];
+
+        // Cannot validate a model here, call .errors() on the value itself
+        if (value instanceof Model) {
+            return false
+        }
+        // Assess all validators applied to the property through decorators, configuration, or rules
+        else {
+
+            // value should be validated, get metadata for the property
+            const propertyMetadata = this.reflectMetadata(property);
+
+            // Ensure the property is an instance of its correct type
+            const expectedType = propertyMetadata.find(metadata => metadata.key === 'design:type');
+            const propType = this.constructorForValue(value);
+            if (expectedType && propType !== expectedType.args) {
+                errors = [`Type mismatch. Expected '${(<any>expectedType.args).name}', but got '${propType.name}'`];
+
+            } else {
+                // Loop through the metadata keys & perform validation
+                propertyMetadata.forEach(metadata => {
+
+                    // If there are args and it has a property named 'operator' we can be confident that it is a validator
+                    if (metadata.args instanceof Object && 'operator' in metadata.args) {
+
+                        const propertyValidator: IPropertyValidator = metadata.args;
+
+                        // If it is the truthiness operator (indicating required value), check to see if there was a default value assigned
+                        if (propertyValidator.operator instanceof IsTruthy) {
+
+                            // Check the metadata to see if we assigned a default value
+                            const defaultAssigned = propertyMetadata.find(m => m.key === 'default:assigned');
+
+                            // If a default value was assigned, fail, otherwise still evaluate for truthiness
+                            const result = propertyValidator.operator.execute(undefined, value);
+                            if (defaultAssigned || !result) errors.push(propertyValidator.message);
+                        }
+                        else { // Ignore validators other than required if there is not a truthy value
+
+                            // Retrieve the operator
+                            const required = OperatorMap.get('required');
+
+                            // Evaluate truthiness
+                            const isTruthy = required?.execute(undefined, value);
+
+                            // Returning here will signal the next metadata key to be processed in the foreach
+                            if (!isTruthy) return;
+
+                            // Evaluate the operator against the decorated condition (left) and the current value (right)
+                            const result = propertyValidator.operator.execute(propertyValidator.left, value);
+
+                            // A falsy result means that the condition was not met, log the stuff
+                            if (!result) errors.push(propertyValidator.message);
+                        }
+                    }
+                });
+            }
+        }
+
+        return errors.length ? errors : false;
     }
 
     /**

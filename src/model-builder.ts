@@ -1,31 +1,44 @@
 import { Validators } from './decorators';
-import { Constructor, Decorator, IModel } from './interfaces';
+import { Decorator } from './interfaces';
 import { Model } from './model';
 
 export class ModelBuilder {
 
-    private model = new Model();
     private properties: PropertyBuilder[] = [];
 
     string(name: string): StringBuilder {
-        return this.pushProperty<StringBuilder>(new StringBuilder(name, this.model));
+        return this.pushProperty<StringBuilder>(new StringBuilder(name));
     }
 
     number(name: string) {
-        return this.pushProperty<NumberBuilder>(new NumberBuilder(name, this.model));
+        return this.pushProperty<NumberBuilder>(new NumberBuilder(name));
     }
 
     date(name: string): DateBuilder {
-        return this.pushProperty<DateBuilder>(new DateBuilder(name, this.model));
+        return this.pushProperty<DateBuilder>(new DateBuilder(name));
     }
 
 
-    async validateAsync(model: IModel) {
-        Object.keys(model).forEach(key => {
-            if (key in this.model) this.model[key] = model[key];
+    validate(input: Record<string, unknown>) {
+        const value = new Model(input);
+        const errors: Record<string, unknown> = {};
+        this.properties.forEach(builder => {
+            // Apply the metadata to the model
+            builder.apply(value);
+
+            const prop = builder.property as string;
+
+            // Validate the property
+            const { error } = builder.validate(input[prop]);
+
+            // Update the errors if there is an error
+            if (error) errors[prop] = error;
         });
-        const error = (await this.model.errors()) || undefined;
-        return { error, value: model };
+
+        return {
+            error: Object.keys(errors).length ? errors : undefined,
+            value
+        };
     }
 
     private pushProperty<T extends PropertyBuilder>(builder: PropertyBuilder) {
@@ -36,35 +49,49 @@ export class ModelBuilder {
 
 export abstract class PropertyBuilder {
 
-    protected metadataKeys: (string | symbol)[] = [];
+    protected metadata: Map<string | symbol, Function> = new Map();
 
     abstract type: Function;
 
-    constructor(protected property: string | symbol, protected model: Model) {
+    constructor(public property: string | symbol) {
     }
 
     private applyType() {
-        if (!this.metadataKeys.includes('design:type')) {
-            this.metadataKeys.push('design:type');
-            this.model[this.property as string] = '';
-            Reflect.defineMetadata('design:type', this.type, this.model, this.property);
-            this.model.coerceProperty(this.property as string);
-        }
+        const key = 'design:type';
+        this.metadata.set(key, (model: Model, property: string | symbol) => {
+            Reflect.defineMetadata(key, this.type, model, property);
+        });
+    }
+
+    apply(model: Model): void {
+        const prop = this.property as string;
+        this.metadata.forEach(decorate => decorate(model, prop));
+        model.coerceProperty(prop);
+    }
+
+    validate(input: unknown) {
+        // Generate a new model around the input
+        const value = new Model({ [this.property as string]: input });
+
+        // Apply the metadata to the model
+        this.apply(value);
+
+        // Validate the property
+        const error = value.validateProperty(this.property as string) || undefined;
+
+        return { error, value };
     }
 
     protected addMetadata<T extends PropertyBuilder>(key: (string | symbol), decorator: Decorator<Model>): T {
         this.applyType();
-        if (!this.metadataKeys.includes(key)) {
-            this.metadataKeys.push(key);
-            decorator(this.model, this.property);
-        }
+        this.metadata.set(key, decorator);
         return <PropertyBuilder>this as T;
     }
 }
 
 export class StringBuilder extends PropertyBuilder {
 
-    type: Function = String;
+    type = String;
 
     required(): StringBuilder {
         return this.addMetadata<StringBuilder>('validator:is-truthy', Validators.required);
@@ -86,7 +113,7 @@ export class StringBuilder extends PropertyBuilder {
 
 export class DateBuilder extends PropertyBuilder {
 
-    type: Function = Date;
+    type = Date;
 
     required(): DateBuilder {
         return this.addMetadata<DateBuilder>('validator:is-truthy', Validators.required);
@@ -105,7 +132,7 @@ export class DateBuilder extends PropertyBuilder {
 
 export class NumberBuilder extends PropertyBuilder {
 
-    type: Function = Number;
+    type = Number;
 
     required(): NumberBuilder {
         return this.addMetadata<NumberBuilder>('validator:is-truthy', Validators.required);

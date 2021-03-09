@@ -91,10 +91,10 @@ export class Mutation extends Model implements IMutation, IExecutableAction {
     }
 
     /** @inheritdoc */
-    async errors(): Promise<Record<string, unknown> | false> {
+    errors(): Record<string, unknown> | false {
 
         // Run base validation
-        let result = await super.errors();
+        let result = super.errors();
 
         // Calculate token count within the mutation
         let tokens = 0;

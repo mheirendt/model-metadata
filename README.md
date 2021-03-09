@@ -42,12 +42,10 @@ name.max(20);
 name.pattern(/^[_A-z0-9]*((-|\s)*[_A-z0-9])*$/);
 
 // Validate an input against the model
-const validity = builder.validateAsync({name: 'Michael'}).then({error, value} => {
-    // If the input is invalid, error will be an object describing the issues with the input.
-    // If it is valid, error will be undefined.
-    // Value will be the input provided to the validate function
-    console.log(error, value);
-});
+// If the input is invalid, error will be an object describing the issues with the input.
+// If it is valid, error will be undefined.
+// Value will be the input provided to the validate function
+const {error, value } = builder.validate({name: 'Michael'}); // => error: undefined, value: {name: 'Michael'}
 
 ```
 
@@ -79,7 +77,7 @@ class User extends Model {
 
 const user = new User({name: 'm'});
 
-const errors = await user.errors();
+const errors = user.errors();
 /**
  * => {
  *  name: ['Minimum length of 2']
