@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "outDir": "dist/js",
+        "lib": [
+            "es6"
+        ],
+        "module": "commonjs",
+        "declaration": true,
+        "esModuleInterop": true,
+        "strict": true,
+        "moduleResolution": "node"
+    },
+    "include": [
+        "src"
+    ],
+    "exclude": [
+        "dist",
+        "node_modules",
+        "**/*.spec.ts"
+    ]
+}
