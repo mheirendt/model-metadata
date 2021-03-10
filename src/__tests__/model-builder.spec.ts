@@ -1,18 +1,13 @@
+import { Model } from '../model';
 import { ModelBuilder } from '../model-builder';
 
 describe('model-builder', () => {
-
-    it('should not allow duplicate properties', () => {
-        const builder = new ModelBuilder();
-        builder.string('test');
-        expect(() => builder.string('test')).toThrowError('Duplicate property: test');
-    });
 
     it('should validate a string property', () => {
         const builder = new ModelBuilder();
         builder.string('test').required().min(5).max(10).pattern(/\d+/);
 
-        let valid = builder.validate({ test: 'kjfdlkjfd' });
+        let valid = builder.validate({ test: 'test' });
         expect(valid.error).toEqual(expect.objectContaining({ test: expect.arrayContaining(['Field is invalid']) }));
 
         valid = builder.validate({ test: '12345' });
@@ -21,17 +16,7 @@ describe('model-builder', () => {
 
     it('should evaluate a condition', () => {
         const builder = new ModelBuilder();
-        const prop = builder.string('name').required().min(2).max(10);
-
-        prop.when('equal', 'test', (builder: ModelBuilder) => {
-            builder.string('another').required();
-        });
-
-        const { error } = builder.validate({
-            name: 'test'
-        });
-        expect(typeof error).toEqual('object');
-        expect(error!.another).toEqual(expect.arrayContaining(['Field is required']));
+        builder.string('name').required().min(2).max(10);
 
         const birthday = builder.date('birthday').required();
 
@@ -42,9 +27,8 @@ describe('model-builder', () => {
             builder.string('guardian').required();
         });
 
-        const { error: nextError } = builder.validate({ name: 'Michael', birthday: new Date('01/01/2010') });
-        expect(typeof nextError).toEqual('object');
-        expect(nextError!.guardian).toEqual(expect.arrayContaining(['Field is required']));
+        const { error } = builder.validate({ name: 'Michael', birthday: new Date('01/01/2010') });
+        expect(error.guardian).toEqual(expect.arrayContaining(['Field is required']));
     });
 
     it('should validate a date property', () => {
@@ -67,5 +51,41 @@ describe('model-builder', () => {
 
         result = builder.validate({ count: 2 });
         expect(result.error).toEqual(expect.objectContaining({ count: expect.arrayContaining(['Minimum length of 3']) }));
+    });
+
+    it('should validate a sub-model', () => {
+        const builder = new ModelBuilder();
+
+        builder.string('name').required();
+        const addressBuilder = builder.model('address');
+
+        addressBuilder.string('street').required();
+
+        const { error } = builder.validate({ name: 'Michael' });
+        expect(error).toEqual(expect.objectContaining({ address: expect.objectContaining({ street: expect.arrayContaining(['Field is required']) }) }));
+    });
+
+    it('should validate arrays', () => {
+        const builder = new ModelBuilder();
+
+        const arrayBuilder = builder.array('users').items(Model).min(1);
+        const itemBuilder = arrayBuilder.item<ModelBuilder>();
+        itemBuilder.string('name').required();
+        itemBuilder.string('email').email();
+
+
+        const { error } = builder.validate({
+            users: [{ name: 'Michael', email: 'test@test.com' }, { name: '' }]
+        });
+
+        expect(error).toEqual(
+            expect.objectContaining({
+                users: expect.arrayContaining([
+                    undefined,
+                    expect.objectContaining({ name: expect.arrayContaining(['Field is required']) })
+                ])
+            })
+        );
+
     });
 });
