@@ -61,28 +61,27 @@ export class ModelBuilder extends PropertyBuilder<Model> {
     }
 
     model(name: string): ModelBuilder {
-        const property = this.findProperty(name);
-        return <ModelBuilder | undefined>property || this.pushProperty<ModelBuilder>(new ModelBuilder(name));
+        return this.pushProperty<ModelBuilder>(new ModelBuilder(name));
     }
 
     array(name: string): ArrayBuilder {
-        const property = this.findProperty(name);
-        return <ArrayBuilder | undefined>property || this.pushProperty<ArrayBuilder>(new ArrayBuilder(name));
+        return this.pushProperty<ArrayBuilder>(new ArrayBuilder(name));
+    }
+
+    boolean(name: string): BooleanBuilder {
+        return this.pushProperty<BooleanBuilder>(new BooleanBuilder(name));
     }
 
     string(name: string): StringBuilder {
-        const property = this.findProperty(name);
-        return <StringBuilder | undefined>property || this.pushProperty<StringBuilder>(new StringBuilder(name));
+        return this.pushProperty<StringBuilder>(new StringBuilder(name));
     }
 
     number(name: string) {
-        const property = this.findProperty(name);
-        return <NumberBuilder | undefined>property || this.pushProperty<NumberBuilder>(new NumberBuilder(name));
+        return this.pushProperty<NumberBuilder>(new NumberBuilder(name));
     }
 
     date(name: string): DateBuilder {
-        const property = this.findProperty(name);
-        return <DateBuilder | undefined>property || this.pushProperty<DateBuilder>(new DateBuilder(name));
+        return this.pushProperty<DateBuilder>(new DateBuilder(name));
     }
 
     validate(input: any): { error: any, value: Model } {
@@ -118,6 +117,11 @@ export class ModelBuilder extends PropertyBuilder<Model> {
     }
 
     private pushProperty<T extends PropertyBuilder<any>>(builder: PropertyBuilder<any>) {
+
+        // If property exists, return the existing builder
+        const property = this.findProperty(builder.property as string);
+        if (property) return property as T;
+
         // Listen to the condition events emitted by the property builder
         builder.on('condition', (fn: (builder: ModelBuilder) => void) => fn(this));
         this.properties.push(builder);
@@ -125,7 +129,11 @@ export class ModelBuilder extends PropertyBuilder<Model> {
     }
 }
 
-class StringBuilder extends PropertyBuilder<String> {
+export class BooleanBuilder extends PropertyBuilder<Boolean> {
+    type = Boolean;
+}
+
+export class StringBuilder extends PropertyBuilder<String> {
 
     type = String;
 
@@ -151,7 +159,7 @@ class StringBuilder extends PropertyBuilder<String> {
 
 }
 
-class DateBuilder extends PropertyBuilder<Date> {
+export class DateBuilder extends PropertyBuilder<Date> {
 
     type = Date;
 
@@ -169,7 +177,7 @@ class DateBuilder extends PropertyBuilder<Date> {
 
 }
 
-class NumberBuilder extends PropertyBuilder<Number> {
+export class NumberBuilder extends PropertyBuilder<Number> {
 
     type = Number;
 

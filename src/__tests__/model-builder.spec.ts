@@ -1,18 +1,7 @@
 import { Model } from '../model';
-import { ModelBuilder } from '../model-builder';
+import { DateBuilder, ModelBuilder, NumberBuilder, StringBuilder } from '../model-builder';
 
 describe('model-builder', () => {
-
-    it('should validate a string property', () => {
-        const builder = new ModelBuilder();
-        builder.string('test').required().min(5).max(10).pattern(/\d+/);
-
-        let valid = builder.validate({ test: 'test' });
-        expect(valid.error).toEqual(expect.objectContaining({ test: expect.arrayContaining(['Field is invalid']) }));
-
-        valid = builder.validate({ test: '12345' });
-        expect(valid.error).toBeUndefined();
-    });
 
     it('should evaluate a condition', () => {
         const builder = new ModelBuilder();
@@ -29,28 +18,6 @@ describe('model-builder', () => {
 
         const { error } = builder.validate({ name: 'Michael', birthday: new Date('01/01/2010') });
         expect(error.guardian).toEqual(expect.arrayContaining(['Field is required']));
-    });
-
-    it('should validate a date property', () => {
-        const builder = new ModelBuilder();
-        const now = new Date();
-        builder.date('created').required().max(now);
-
-        let result = builder.validate({ created: now });
-        expect(result.error).toBeUndefined();
-
-        result = builder.validate({ created: new Date() });
-        expect(result.error).toEqual(expect.objectContaining({ created: expect.arrayContaining([expect.stringContaining('Maximum date of')]) }));
-    });
-
-    it('should validate a number property', () => {
-        const builder = new ModelBuilder();
-        builder.number('count').max(5).min(3);
-        let result = builder.validate({ count: 3 });
-        expect(result.error).toBeUndefined();
-
-        result = builder.validate({ count: 2 });
-        expect(result.error).toEqual(expect.objectContaining({ count: expect.arrayContaining(['Minimum length of 3']) }));
     });
 
     it('should validate a sub-model', () => {
@@ -87,5 +54,88 @@ describe('model-builder', () => {
             })
         );
 
+    });
+
+    describe('string', () => {
+        let builder: ModelBuilder;
+        let propertyBuilder: StringBuilder;
+        beforeEach(() => {
+            builder = new ModelBuilder();
+            propertyBuilder = builder.string('name');
+        });
+
+        it('should build', () => {
+            const { value } = builder.validate({});
+            expect(value.name).toEqual('');
+        });
+
+        it('should validate', () => {
+            propertyBuilder.required().min(5).max(10).pattern(/\d+/);
+
+            let valid = builder.validate({ name: 'test' });
+            expect(valid.error).toEqual(expect.objectContaining({ name: expect.arrayContaining(['Field is invalid']) }));
+
+            valid = builder.validate({ name: '12345' });
+            expect(valid.error).toBeUndefined();
+        });
+    })
+
+    describe('date', () => {
+        let builder: ModelBuilder;
+        let propertyBuilder: DateBuilder;
+        beforeEach(() => {
+            builder = new ModelBuilder();
+            propertyBuilder = builder.date('created');
+        });
+        it('should build', () => {
+            const { value } = builder.validate({});
+            expect(value.created).toBeDefined();
+            expect(value.created).toBeInstanceOf(Date);
+        });
+        it('should validate', () => {
+            const now = new Date();
+            propertyBuilder.required().max(now);
+
+            let result = builder.validate({ created: now });
+            expect(result.error).toBeUndefined();
+
+            result = builder.validate({ created: new Date() });
+            expect(result.error).toEqual(expect.objectContaining({ created: expect.arrayContaining([expect.stringContaining('Maximum date of')]) }));
+        });
+
+    });
+
+    describe('boolean', () => {
+        let builder: ModelBuilder;
+        beforeEach(() => {
+            builder = new ModelBuilder();
+            builder.boolean('confirm');
+        });
+        it('should build', () => {
+            const { value } = builder.validate({});
+            expect(value.confirm).toBeDefined();
+            expect(value.confirm).toEqual(false);
+        });
+    });
+
+    describe('number', () => {
+        let builder: ModelBuilder;
+        let propertyBuilder: NumberBuilder;
+        beforeEach(() => {
+            builder = new ModelBuilder();
+            propertyBuilder = builder.number('count');
+        });
+        it('should build', () => {
+            const { value } = builder.validate({});
+            expect(value.count).toEqual(0);
+        });
+        it('should validate', () => {
+            propertyBuilder.max(5).min(3);
+            let result = builder.validate({ count: 3 });
+            expect(result.error).toBeUndefined();
+
+            result = builder.validate({ count: 2 });
+            expect(result.error).toEqual(expect.objectContaining({ count: expect.arrayContaining(['Minimum length of 3']) }));
+        });
     });
 });
