@@ -78,7 +78,7 @@ describe('model-builder', () => {
             valid = builder.validate({ name: '12345' });
             expect(valid.error).toBeUndefined();
         });
-    })
+    });
 
     describe('date', () => {
         let builder: ModelBuilder;
